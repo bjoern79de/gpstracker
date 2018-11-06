@@ -1,14 +1,36 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_wifi.h"
+#include "esp_log.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
+#include "common.h"
+#include "gps.h"
+
+#define TAG "main"
 
 esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     return ESP_OK;
+}
+
+static void gps_task(void *pvParameter)
+{
+    ESP_LOGI(TAG, "gps task started");
+    if (gps_config() < 0)
+    {
+        ESP_LOGE(TAG, "error configuring gps");
+        while(1)
+        {
+            delayMs(100);
+        }
+    }
+    while(1)
+    {
+        gps_stateMachine();
+    }
 }
 
 void app_main(void)
@@ -20,10 +42,11 @@ void app_main(void)
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    wifi_config_t sta_config = {
+    wifi_config_t sta_config =
+    {
         .sta = {
-            .ssid = "access_point_name",
-            .password = "password",
+            .ssid = "WLAN-0024FEACF701",
+            .password = "5irvalu5e",
             .bssid_set = false
         }
     };
@@ -31,12 +54,11 @@ void app_main(void)
     ESP_ERROR_CHECK( esp_wifi_start() );
     ESP_ERROR_CHECK( esp_wifi_connect() );
 
-    gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT);
-    int level = 0;
-    while (true) {
-        gpio_set_level(GPIO_NUM_4, level);
-        level = !level;
-        vTaskDelay(300 / portTICK_PERIOD_MS);
+    xTaskCreatePinnedToCore(&gps_task, "gpstask", 2048, NULL, 20, NULL, 0);
+
+    while (true)
+    {
+        printf("sats: %i, fix: %i, min: %i, lat: %d, lon: %d\n", NavPvt.nav.numSV, NavPvt.nav.fixType, NavPvt.nav.utcMinute, NavPvt.nav.latDeg7, NavPvt.nav.lonDeg7);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
-

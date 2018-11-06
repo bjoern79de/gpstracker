@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := gpstracker 
+PROJECT_NAME := gpstracker
 
 include $(IDF_PATH)/make/project.mk
 
