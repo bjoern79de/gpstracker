@@ -57,9 +57,14 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(&gps_task, "gpstask", 2048, NULL, 20, NULL, 0);
 
+   lora_init();
+   lora_set_frequency(868e6);
+   lora_enable_crc();
+
     while (true)
     {
         printf("sats: %i, fix: %i, min: %i, lat: %d, lon: %d\n", NavPvt.nav.numSV, NavPvt.nav.fixType, NavPvt.nav.utcMinute, NavPvt.nav.latDeg7, NavPvt.nav.lonDeg7);
+        lora_send_packet((uint8_t*)"Hello", 5);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
