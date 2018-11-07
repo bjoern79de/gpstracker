@@ -34,6 +34,15 @@ static void gps_task(void *pvParameter)
     }
 }
 
+typedef struct {
+	uint8_t fixType;
+	uint8_t	numSats;
+	int32_t lon;
+	int32_t lat;
+    int32_t	groundSpeed;
+    int32_t height;
+} packet_t;
+
 void app_main(void)
 {
     nvs_flash_init();
@@ -64,7 +73,26 @@ void app_main(void)
     while (true)
     {
         printf("sats: %i, fix: %i, min: %i, lat: %d, lon: %d\n", NavPvt.nav.numSV, NavPvt.nav.fixType, NavPvt.nav.utcMinute, NavPvt.nav.latDeg7, NavPvt.nav.lonDeg7);
-        lora_send_packet((uint8_t*)"Hello", 5);
+        packet_t packet = {
+            .fixType = NavPvt.nav.fixType,
+            .numSats = NavPvt.nav.numSV,
+            .lon = NavPvt.nav.lonDeg7,
+            .lat = NavPvt.nav.latDeg7,
+            .groundSpeed = NavPvt.nav.groundSpeedmmps
+        };
+        lora_send_packet((uint8_t*)&packet, sizeof(packet));
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+
+    // receive loop
+    packet_t * packet = (packet_t*)malloc(sizeof(packet_t));
+    while (true) {
+      lora_receive();    // put into receive mode
+      while(lora_received()) {
+         int size = lora_receive_packet((uint8_t*)packet, sizeof(packet_t));
+         lora_receive();
+      }
+      vTaskDelay(1);
+    }
+
 }
