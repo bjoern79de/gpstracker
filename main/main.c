@@ -8,6 +8,7 @@
 #include "driver/gpio.h"
 #include "common.h"
 #include "gps.h"
+#include "lora.h"
 
 #define TAG "main"
 

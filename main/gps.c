@@ -1,4 +1,4 @@
-#include "Arduino.h"
+//#include "Arduino.h"
 #include "common.h"
 #include "driver/uart.h"
 #include <math.h>
@@ -373,49 +373,6 @@ void gps_stateMachine()
         }
     }
 }
-
-
-// great-circle distance using WGS-84 average earth radius
-int32_t gps_haversineDistancem(float lat1deg, float lon1deg, float lat2deg, float lon2deg)
-{
-    float  dlatrad, dlonrad, lat1rad, lat2rad, sindlat, sindlon, a, c, distancem;
-
-    dlatrad = (lat2deg - lat1deg) * PI_DIV_180;
-    dlonrad = (lon2deg - lon1deg) * PI_DIV_180;
-
-    lat1rad = lat1deg * PI_DIV_180;
-    lat2rad = lat2deg * PI_DIV_180;
-
-    sindlat = sin(dlatrad / 2.0f);
-    sindlon = sin(dlonrad / 2.0f);
-
-    a = sindlat * sindlat + cos(lat1rad) * cos(lat2rad) * sindlon * sindlon;
-    c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    distancem = 6371009.0f * c;  // average earth radius in m (WGS-84)
-    return (int32_t)(distancem + 0.5f);
-}
-
-
-int32_t gps_bearingDeg(float lat1, float lon1, float lat2, float lon2)
-{
-    float lat1rad, lat2rad, dlonrad, x, y, b;
-    int32_t bearing;
-
-    dlonrad = (lon2 - lon1) * PI_DIV_180;
-    lat1rad = lat1 * PI_DIV_180;
-    lat2rad = lat2 * PI_DIV_180;
-
-    x =  cos(lat1rad) * sin(lat2rad) - sin(lat1rad) * cos(lat2rad) * cos(dlonrad);
-    y = sin(dlonrad) * cos(lat2rad);
-    b = atan2(y, x);
-    b += TWO_PI;
-    if (b >= TWO_PI) b -= TWO_PI; // convert to [0, 2*pi] radians
-    b *= _180_DIV_PI;  // translate to [0,360] degrees
-    bearing = (int32_t)(b + 0.5f);
-    CLAMP(bearing, 0, 359);
-    return bearing;
-}
-
 
 void gps_localDateTime(NAV_PVT *pn, int *plYear, int *plMonth, int *plDay, int *plHour, int *plMinute)
 {
