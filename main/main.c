@@ -57,9 +57,9 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(&gps_task, "gpstask", 2048, NULL, 20, NULL, 0);
 
-   lora_init();
-   lora_set_frequency(868e6);
-   lora_enable_crc();
+    lora_init();
+    lora_set_frequency(868e6);
+    lora_enable_crc();
 
     while (true)
     {
