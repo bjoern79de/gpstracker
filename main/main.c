@@ -12,6 +12,8 @@
 
 #define TAG "main"
 
+#define RECEIVER false
+
 esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     return ESP_OK;
@@ -64,35 +66,38 @@ void app_main(void)
     ESP_ERROR_CHECK( esp_wifi_start() );
     ESP_ERROR_CHECK( esp_wifi_connect() );
 
-    xTaskCreatePinnedToCore(&gps_task, "gpstask", 2048, NULL, 20, NULL, 0);
-
     lora_init();
     lora_set_frequency(868e6);
     lora_enable_crc();
 
-    while (true)
-    {
-        printf("sats: %i, fix: %i, min: %i, lat: %d, lon: %d\n", NavPvt.nav.numSV, NavPvt.nav.fixType, NavPvt.nav.utcMinute, NavPvt.nav.latDeg7, NavPvt.nav.lonDeg7);
-        packet_t packet = {
-            .fixType = NavPvt.nav.fixType,
-            .numSats = NavPvt.nav.numSV,
-            .lon = NavPvt.nav.lonDeg7,
-            .lat = NavPvt.nav.latDeg7,
-            .groundSpeed = NavPvt.nav.groundSpeedmmps
-        };
-        lora_send_packet((uint8_t*)&packet, sizeof(packet));
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    if (!RECEIVER) {
+        xTaskCreatePinnedToCore(&gps_task, "gpstask", 2048, NULL, 20, NULL, 0);
 
-    // receive loop
-    packet_t * packet = (packet_t*)malloc(sizeof(packet_t));
-    while (true) {
-      lora_receive();    // put into receive mode
-      while(lora_received()) {
-         int size = lora_receive_packet((uint8_t*)packet, sizeof(packet_t));
-         lora_receive();
-      }
-      vTaskDelay(1);
+        while (true) {
+            printf("sats: %i, fix: %i, lat: %d, lon: %d\n", NavPvt.nav.numSV, NavPvt.nav.fixType, NavPvt.nav.latDeg7, NavPvt.nav.lonDeg7);
+            packet_t packet = {
+                .fixType     = NavPvt.nav.fixType,
+                .numSats     = NavPvt.nav.numSV,
+                .lon         = NavPvt.nav.lonDeg7,
+                .lat         = NavPvt.nav.latDeg7,
+                .groundSpeed = NavPvt.nav.groundSpeedmmps
+            };
+            lora_send_packet((uint8_t*)&packet, sizeof(packet));
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+    } else {
+
+        // receive loop
+        packet_t * packet = (packet_t*)malloc(sizeof(packet_t));
+        while (true) {
+            lora_receive();    // put into receive mode
+            while (lora_received()) {
+                int size = lora_receive_packet((uint8_t*)packet, sizeof(packet_t));
+                printf("sats: %i, fix: %i, lat: %d, lon: %d\n", packet->numSats, packet->fixType, packet->lat, packet->lon);
+                lora_receive();
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
     }
 
 }
