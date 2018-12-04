@@ -212,4 +212,23 @@ void app_main(void)
         }
     }
 
+ 	if (deviceConnected) {
+        pTxCharacteristic->setValue(&txValue, 1);
+        pTxCharacteristic->notify();
+        txValue++;
+		vTaskDelay(100 / portTICK_PERIOD_MS); // bluetooth stack will go into congestion, if too many packets are sent
+	}
+
+    // disconnecting
+    if (!deviceConnected && oldDeviceConnected) {
+        vTaskDelay(500 / portTICK_PERIOD_MS); // give the bluetooth stack the chance to get things ready
+        pServer->startAdvertising(); // restart advertising
+        //Serial.println("start advertising");
+        oldDeviceConnected = deviceConnected;
+    }
+    // connecting
+    if (deviceConnected && !oldDeviceConnected) {
+		// do stuff here on connecting
+        oldDeviceConnected = deviceConnected;
+    }
 }
