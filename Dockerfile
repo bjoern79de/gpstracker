@@ -5,7 +5,7 @@ FROM ubuntu:16.04
 # Framework, aka the SDK) We do this all in one operation to avoid creating extra layers in the
 # resulting container.
 RUN apt update && \
-    apt-get install -y gcc git wget make libncurses-dev flex bison gperf python python-serial curl && \
+    apt-get install -y gcc git wget make libncurses-dev flex bison gperf python python-pip python-serial curl && \
     mkdir /opt/esp32 && \
     cd /opt/esp32 && \
     wget https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz && \
@@ -13,7 +13,8 @@ RUN apt update && \
     rm xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz && \
     git clone --recursive https://github.com/espressif/esp-idf.git /opt/esp32/esp-idf && \
 	cd esp-idf && \
-	git checkout tags/v3.1.1
+	git checkout master \
+    /usr/bin/python -m pip install --user -r /opt/esp32/esp-idf/requirements.txt
 
 RUN export PWD=/usr/build
 
