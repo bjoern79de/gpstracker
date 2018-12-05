@@ -13,14 +13,24 @@ extern "C" {
 #include <BLE2902.h>
 
 BLEServer *pServer = NULL;
-BLECharacteristic * pTxCharacteristic;
+
+BLECharacteristic * pFixCharacteristic;
+BLECharacteristic * pNumSatCharacteristic;
+BLECharacteristic * pLatCharacteristic;
+BLECharacteristic * pLonCharacteristic;
+BLECharacteristic * pSpeedCharacteristic;
+BLECharacteristic * pHeightCharacteristic;
+
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
-uint8_t txValue = 0;
 
-#define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" // UART service UUID
-#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define SERVICE_UUID               "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" // UART service UUID
+#define CHARACTERISTIC_UUID_FIX    "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_NSAT   "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_LAT    "6E400004-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_LON    "6E400005-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_SPEED  "6E400006-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_HEIGHT "6E400007-B5A3-F393-E0A9-E50E24DCCA9E"
 
 #define TAG "main"
 
@@ -43,22 +53,6 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
 };
 
-class MyCallbacks: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *pCharacteristic) {
-      std::string rxValue = pCharacteristic->getValue();
-
-      if (rxValue.length() > 0) {
-        //Serial.println("*********");
-        //Serial.print("Received Value: ");
-        //for (int i = 0; i < rxValue.length(); i++)
-          //Serial.print(rxValue[i]);
-
-        //Serial.println();
-        //Serial.println("*********");
-      }
-    }
-};
-
 void init_ble() {
   // Create the BLE Device
   BLEDevice::init("UART Service");
@@ -71,19 +65,37 @@ void init_ble() {
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
   // Create a BLE Characteristic
-  pTxCharacteristic = pService->createCharacteristic(
-										CHARACTERISTIC_UUID_TX,
-										BLECharacteristic::PROPERTY_NOTIFY
-									);
+  pFixCharacteristic = pService->createCharacteristic(
+                            CHARACTERISTIC_UUID_FIX,
+                            BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
+                        );
+  pNumSatCharacteristic = pService->createCharacteristic(
+                            CHARACTERISTIC_UUID_NSAT,
+                            BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
+                        );
+  pLatCharacteristic = pService->createCharacteristic(
+                            CHARACTERISTIC_UUID_LAT,
+                            BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
+                        );
+  pLonCharacteristic = pService->createCharacteristic(
+                            CHARACTERISTIC_UUID_LON,
+                            BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
+                        );
+  pSpeedCharacteristic = pService->createCharacteristic(
+                            CHARACTERISTIC_UUID_SPEED,
+                            BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
+                        );
+  pHeightCharacteristic = pService->createCharacteristic(
+                            CHARACTERISTIC_UUID_HEIGHT,
+                            BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
+                        );
                       
-  pTxCharacteristic->addDescriptor(new BLE2902());
-
-  BLECharacteristic * pRxCharacteristic = pService->createCharacteristic(
-											 CHARACTERISTIC_UUID_RX,
-											BLECharacteristic::PROPERTY_WRITE
-										);
-
-  pRxCharacteristic->setCallbacks(new MyCallbacks());
+  pFixCharacteristic->addDescriptor(new BLE2902());
+  pNumSatCharacteristic->addDescriptor(new BLE2902());
+  pLatCharacteristic->addDescriptor(new BLE2902());
+  pLonCharacteristic->addDescriptor(new BLE2902());
+  pSpeedCharacteristic->addDescriptor(new BLE2902());
+  pHeightCharacteristic->addDescriptor(new BLE2902());
 
   // Start the service
   pService->start();
@@ -205,30 +217,45 @@ void app_main(void)
             lora_receive();    // put into receive mode
             while (lora_received()) {
                 int size = lora_receive_packet((uint8_t*)packet, sizeof(packet_t));
+
+                if (deviceConnected) {
+                    pFixCharacteristic->setValue((uint8_t*)&packet->fixType, 4);
+                    pFixCharacteristic->notify();
+
+                    pNumSatCharacteristic->setValue((uint8_t*)&packet->numSats, 4);
+                    pNumSatCharacteristic->notify();
+
+                    pLatCharacteristic->setValue((uint8_t*)&packet->lat, 4);
+                    pLatCharacteristic->notify();
+                    
+                    pLonCharacteristic->setValue((uint8_t*)&packet->lon, 4);
+                    pLonCharacteristic->notify();
+
+                    pSpeedCharacteristic->setValue((uint8_t*)&packet->groundSpeed, 4);
+                    pSpeedCharacteristic->notify();
+
+                    pHeightCharacteristic->setValue((uint8_t*)&packet->height, 4);
+                    pHeightCharacteristic->notify();
+
+                    vTaskDelay(100 / portTICK_PERIOD_MS); // bluetooth stack will go into congestion, if too many packets are sent
+                }
                 printf("packetSize: %i, sats: %i, fix: %i, lat: %d, lon: %d\n", size, packet->numSats, packet->fixType, packet->lat, packet->lon);
                 lora_receive();
             }
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+            // disconnecting
+            if (!deviceConnected && oldDeviceConnected) {
+                vTaskDelay(500 / portTICK_PERIOD_MS); // give the bluetooth stack the chance to get things ready
+                pServer->startAdvertising(); // restart advertising
+                //Serial.println("start advertising");
+                oldDeviceConnected = deviceConnected;
+            }
+            // connecting
+            if (deviceConnected && !oldDeviceConnected) {
+                // do stuff here on connecting
+                oldDeviceConnected = deviceConnected;
+            }
         }
-    }
-
- 	if (deviceConnected) {
-        pTxCharacteristic->setValue(&txValue, 1);
-        pTxCharacteristic->notify();
-        txValue++;
-		vTaskDelay(100 / portTICK_PERIOD_MS); // bluetooth stack will go into congestion, if too many packets are sent
-	}
-
-    // disconnecting
-    if (!deviceConnected && oldDeviceConnected) {
-        vTaskDelay(500 / portTICK_PERIOD_MS); // give the bluetooth stack the chance to get things ready
-        pServer->startAdvertising(); // restart advertising
-        //Serial.println("start advertising");
-        oldDeviceConnected = deviceConnected;
-    }
-    // connecting
-    if (deviceConnected && !oldDeviceConnected) {
-		// do stuff here on connecting
-        oldDeviceConnected = deviceConnected;
     }
 }
