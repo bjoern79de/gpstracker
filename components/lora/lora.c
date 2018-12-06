@@ -334,7 +334,7 @@ lora_init(void)
    };
            
    ret = spi_bus_initialize(VSPI_HOST, &bus, 0);
-   assert(ret == ESP_OK);
+   //assert(ret == ESP_OK);
 
    spi_device_interface_config_t dev = {
       .clock_speed_hz = 9000000,
@@ -345,7 +345,7 @@ lora_init(void)
       .pre_cb = NULL
    };
    ret = spi_bus_add_device(VSPI_HOST, &dev, &__spi);
-   assert(ret == ESP_OK);
+   //assert(ret == ESP_OK);
 
    /*
     * Perform hardware reset.
@@ -362,7 +362,7 @@ lora_init(void)
       if(version == 0x12) break;
       vTaskDelay(2);
    }
-   assert(i < TIMEOUT_RESET);
+   //assert(i < TIMEOUT_RESET);
 
    /*
     * Default configuration.

@@ -4,7 +4,7 @@
 
 extern "C" {
     #include "lora.h"
-    //#include "ota_server.h"
+    #include "ota_server.h"
 }
 
 #include <BLEDevice.h>
@@ -132,7 +132,7 @@ static void initialise_wifi(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     wifi_config_t sta_config;
-
+    memset(&sta_config, 0, sizeof(sta_config));
     strcpy((char*)sta_config.sta.ssid, WIFI_SSID);
     strcpy((char*)sta_config.sta.password, WIFI_PASSWORD);
     sta_config.sta.bssid_set = false;
@@ -142,14 +142,12 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK( esp_wifi_start() );
 }
 
-/*
 static void ota_server_task(void * param)
 {
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
     ota_server_start();
     vTaskDelete(NULL);
 }
-*/
 
 static void gps_task(void *pvParameter)
 {
@@ -186,12 +184,14 @@ void app_main(void)
     nvs_flash_init();
 
     initialise_wifi();
-    //xTaskCreate(&ota_server_task, "ota_server_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&ota_server_task, "ota_server_task", 4096, NULL, 5, NULL);
 
 	init_ble();
 
     lora_init();
     lora_set_frequency(868e6);
+    lora_set_tx_power(17);
+    
     lora_enable_crc();
 
     if (!RECEIVER) {
@@ -219,10 +219,10 @@ void app_main(void)
                 int size = lora_receive_packet((uint8_t*)packet, sizeof(packet_t));
 
                 if (deviceConnected) {
-                    pFixCharacteristic->setValue((uint8_t*)&packet->fixType, 4);
+                    pFixCharacteristic->setValue((uint8_t*)&packet->fixType, 1);
                     pFixCharacteristic->notify();
 
-                    pNumSatCharacteristic->setValue((uint8_t*)&packet->numSats, 4);
+                    pNumSatCharacteristic->setValue((uint8_t*)&packet->numSats, 1);
                     pNumSatCharacteristic->notify();
 
                     pLatCharacteristic->setValue((uint8_t*)&packet->lat, 4);
