@@ -1,0 +1,8 @@
+# Automatically generated build file. Do not edit.
+COMPONENT_INCLUDES += $(PROJECT_PATH)/components/ESP32_BLE_Arduino/src
+COMPONENT_LDFLAGS += -L$(BUILD_DIR_BASE)/ESP32_BLE_Arduino -lESP32_BLE_Arduino
+COMPONENT_LINKER_DEPS += 
+COMPONENT_SUBMODULES += 
+COMPONENT_LIBRARIES += ESP32_BLE_Arduino
+COMPONENT_LDFRAGMENTS += 
+component-ESP32_BLE_Arduino-build: 

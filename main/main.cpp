@@ -191,6 +191,7 @@ void app_main(void)
     lora_init();
     lora_set_frequency(868e6);
     lora_set_tx_power(17);
+    lora_set_spreading_factor(12);
     
     lora_enable_crc();
 
@@ -242,6 +243,7 @@ void app_main(void)
                 printf("packetSize: %i, sats: %i, fix: %i, lat: %d, lon: %d\n", size, packet->numSats, packet->fixType, packet->lat, packet->lon);
                 lora_receive();
             }
+
             vTaskDelay(1000 / portTICK_PERIOD_MS);
 
             // disconnecting
